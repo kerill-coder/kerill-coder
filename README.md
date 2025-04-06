@@ -277,4 +277,6 @@ def start_bot():
 if __name__ == '__main__':
     app.run(debug=True)
 
-
+pip install -r requirements.txt
+pytest
+python -m unittest discover
