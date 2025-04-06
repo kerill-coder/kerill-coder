@@ -353,4 +353,4 @@ class SecurityManager {
     func validateEnvironment() -> Bool {
         !isJailbroken()
     }
-}
+} 
