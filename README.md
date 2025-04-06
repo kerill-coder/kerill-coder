@@ -8,348 +8,273 @@ my_project/
 │   ├── trading_bot.py
 │   └── ...
 └── README.md          # Документация, если она есть
-
-AppDelegate.swift
-
-import UIKit
-import SwiftUI
-
-@main
-struct FinancialAdvisorApp: App {
-    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-
-    var body: some Scene {
-        WindowGroup {
-            MainView()
-        }
-    }
-}
-
-class AppDelegate: UIResponder, UIApplicationDelegate {}
-
-SceneDelegate.swift
-
-import UIKit
-import SwiftUI
-
-class SceneDelegate: UIResponder, UIWindowSceneDelegate {
-
-    var window: UIWindow?
-
-    func scene(
-        _ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions
-    ) {
-        guard let windowScene = (scene as? UIWindowScene) else { return }
-
-        let window = UIWindow(windowScene: windowScene)
-        window.rootViewController = UIHostingController(rootView: MainView())
-        self.window = window
-        window.makeKeyAndVisible()
-    }
-
-    func sceneDidDisconnect(_ scene: UIScene) {}
-    func sceneDidBecomeActive(_ scene: UIScene) {}
-    func sceneWillResignActive(_ scene: UIScene) {}
-    func sceneWillEnterForeground(_ scene: UIScene) {}
-    func sceneDidEnterBackground(_ scene: UIScene) {}
-}
-
-Models/MarketDataModel.swift
-
-import Foundation
-
-struct MarketData: Identifiable {
-    let id = UUID()
-    let ticker: String
-    let price: Double
-    let change: Double
-    let volume: Int
-    let timestamp: Date
-}
-
-Models/PortfolioItemModel.swift
-
-import Foundation
-
-struct PortfolioItem: Identifiable {
-    let id = UUID()
-    let ticker: String
-    var quantity: Int
-    var averagePrice: Double
-    var currentPrice: Double
-
-    var currentValue: Double {
-        return Double(quantity) * currentPrice
-    }
-
-    var profitLoss: Double {
-        return (currentPrice - averagePrice) * Double(quantity)
-    }
-}
-
-Models/StrategyModel.swift
-
-import Foundation
-
-enum StrategyType: String, Codable {
-    case momentum
-    case meanReversion
-    case newsBased
-    case macroHedging
-}
-
-struct Strategy: Identifiable {
-    let id = UUID()
-    let name: String
-    let type: StrategyType
-    let description: String
-    var parameters: [String: Double]
-}
-
-ViewModels/MarketViewModel.swift
-
-import Foundation
-import Combine
-
-class MarketViewModel: ObservableObject {
-    @Published var marketData: [MarketData] = []
-    private var cancellables = Set<AnyCancellable>()
-
-    func fetchMarketData() {
-        // Здесь будет сетевой вызов или подключение к API
-        // Пока добавим тестовые данные
-        marketData = [
-            MarketData(ticker: "AAPL", price: 180.00, change: 1.2, volume: 1000000, timestamp: Date()),
-            MarketData(ticker: "TSLA", price: 900.00, change: -0.5, volume: 500000, timestamp: Date())
-        ]
-    }
-}
-
-ViewModels/PortfolioViewModel.swift
-
-import Foundation
-
-class PortfolioViewModel: ObservableObject {
-    @Published var portfolio: [PortfolioItem] = []
-
-    func updatePrices(with marketData: [MarketData]) {
-        for i in 0..<portfolio.count {
-            if let data = marketData.first(where: { $0.ticker == portfolio[i].ticker }) {
-                portfolio[i].currentPrice = data.price
-            }
-        }
-    }
-
-    var totalValue: Double {
-        portfolio.reduce(0) { $0 + $1.currentValue }
-    }
-
-    var totalProfitLoss: Double {
-        portfolio.reduce(0) { $0 + $1.profitLoss }
-    }
-}
-
-Views/MainView.swift
-
-import SwiftUI
-
-struct MainView: View {
-    var body: some View {
-        TabView {
-            PortfolioView()
-                .tabItem {
-                    Label("Портфель", systemImage: "chart.pie")
-                }
-
-            AnalyticsView()
-                .tabItem {
-                    Label("Аналитика", systemImage: "waveform.path.ecg")
-                }
-        }
-    }
-}
-
-Views/PortfolioView.swift
-
-import SwiftUI
-
-struct PortfolioView: View {
-    @StateObject private var viewModel = PortfolioViewModel()
-
-    var body: some View {
-        NavigationView {
-            List(viewModel.portfolio) { item in
-                VStack(alignment: .leading) {
-                    Text(item.ticker)
-                        .font(.headline)
-                    Text("Текущая цена: \(item.currentPrice, specifier: "%.2f")")
-                    Text("Прибыль/Убыток: \(item.profitLoss, specifier: "%.2f")")
-                        .foregroundColor(item.profitLoss >= 0 ? .green : .red)
-                }
-            }
-            .navigationTitle("Ваш портфель")
-        }
-    }
-}
-
-Views/AnalyticsView.swift
-
-import SwiftUI
-
-struct AnalyticsView: View {
-    @StateObject private var marketViewModel = MarketViewModel()
-
-    var body: some View {
-        VStack {
-            Text("Аналитика рынка")
-                .font(.largeTitle)
-                .padding()
-
-            List(marketViewModel.marketData) { data in
-                VStack(alignment: .leading) {
-                    Text(data.ticker)
-                        .font(.headline)
-                    Text("Цена: \(data.price, specifier: "%.2f")")
-                    Text("Изменение: \(data.change, specifier: "%.2f")%")
-                        .foregroundColor(data.change >= 0 ? .green : .red)
-                }
-            }
-        }
-        .onAppear {
-            marketViewModel.fetchMarketData()
-        }
-    }
-}
-
-Services/MarketAnalyzer.swift
-
-import Foundation
-
-class MarketAnalyzer {
-    func analyze(_ data: [MarketData]) -> [String: Double] {
-        var signals: [String: Double] = [:]
-        for stock in data {
-            // Простейшая логика: если рост > 1%, рекомендация - купить
-            signals[stock.ticker] = stock.change > 1.0 ? 1.0 : -1.0
-        }
-        return signals
-    }
-}
-
-Services/StrategyEngine.swift
-
-import Foundation
-
-class StrategyEngine {
-    func selectStrategy(for marketData: [MarketData]) -> Strategy {
-        // Пример простого выбора стратегии
-        let strategy = Strategy(
-            name: "Basic Momentum",
-            type: .momentum,
-            description: "Покупка акций с растущей динамикой",
-            parameters: ["threshold": 1.0]
-        )
-        return strategy
-    }
-
-    func evaluate(strategy: Strategy, on data: [MarketData]) -> [String: Bool] {
-        // Стратегия: если изменение > threshold — сигнал к покупке
-        var decisions: [String: Bool] = [:]
-        for stock in data {
-            let threshold = strategy.parameters["threshold"] ?? 0.5
-            decisions[stock.ticker] = stock.change > threshold
-        }
-        return decisions
-    }
-}
-
-Services/SelfDiagnostics.swift
-
-import Foundation
-
-class SelfDiagnostics {
-    func runHealthCheck() -> [String: Bool] {
-        return [
-            "Network": true,
-            "Data Flow": true,
-            "UI Performance": true,
-            "Memory Usage": true
-        ]
-    }
-
-    func detectIssues() -> [String] {
-        // Заглушка – можно анализировать логи, производительность, сбои
-        return []
-    }
-}
-
-Services/AutoFixEngine.swift
-
-import Foundation
-
-class AutoFixEngine {
-    func attemptFix(for issues: [String]) -> [String: Bool] {
-        var results: [String: Bool] = [:]
-        for issue in issues {
-            // Простейшая логика: вернуть, что "попытка исправить прошла успешно"
-            results[issue] = true
-        }
-        return results
-    }
-}
-
-Utilities/NetworkManager.swift
-
-import Foundation
-
-class NetworkManager {
-    static let shared = NetworkManager()
-
-    private init() {}
-
-    func fetchMockMarketData(completion: @escaping ([MarketData]) -> Void) {
-        // Заглушка – имитация API вызова
-        DispatchQueue.global().asyncAfter(deadline: .now() + 1.0) {
-            let data = [
-                MarketData(ticker: "AAPL", price: 180.0, change: 1.2, volume: 1000000, timestamp: Date()),
-                MarketData(ticker: "GOOGL", price: 2700.0, change: -0.3, volume: 800000, timestamp: Date())
-            ]
-            completion(data)
-        }
-    }
-}
-
-Utilities/PerformanceMonitor.swift
-
-import Foundation
+python
 import os
+import logging
+import requests
+import joblib
+import numpy as np
+import pandas as pd
+import MetaTrader5 as mt5
+from flask import Flask, jsonify, request
+from flask_jwt_extended import JWTManager, jwt_required, create_access_token
+from celery import Celery 
+from binance.client import Client
+from binance.exceptions import BinanceAPIException
+from tensorflow.keras.models import Sequential, load_model
+from tensorflow.keras.layers import LSTM, Dense, Dropout
+from tensorflow.keras.callbacks import EarlyStopping
+from sklearn.preprocessing import MinMaxScaler
+import redis
+import yaml
+import sqlite3
+from datetime import datetime
+import asyncio
 
-class PerformanceMonitor {
-    func logPerformanceMetrics() {
-        let memory = ProcessInfo.processInfo.physicalMemory
-        let uptime = ProcessInfo.processInfo.systemUptime
-        os_log("Memory: %{public}@", "\(memory)")
-        os_log("Uptime: %{public}@", "\(uptime)")
-    }
-}
+# Load config
+with open('config.yaml') as f:
+    config = yaml.safe_load(f)
 
-Utilities/SecurityManager.swift
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('trading_bot.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
-import Foundation
+# Initialize Flask app
+app = Flask(__name__)
+app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'default-secret-key')
+jwt = JWTManager(app)
 
-class SecurityManager {
-    func isJailbroken() -> Bool {
-        // Очень базовая проверка
-        let paths = ["/Applications/Cydia.app", "/Library/MobileSubstrate/MobileSubstrate.dylib"]
-        for path in paths {
-            if FileManager.default.fileExists(atPath: path) {
-                return true
+# Initialize Redis
+redis_client = redis.Redis(host='localhost', port=6379, db=0)
+
+# Initialize Celery
+celery = Celery('tasks', broker='redis://localhost:6379/0')
+
+class TradingBot:
+    def __init__(self):
+        self.mt5_connected = False
+        self.model = None
+        self.scaler = MinMaxScaler()
+        self.init_mt5()
+        self.load_model()
+        self.db_conn = sqlite3.connect(config['database']['path'])
+        
+    def init_mt5(self):
+        try:
+            if not mt5.initialize(
+                login=config['mt5']['login'],
+                password=config['mt5']['password'],
+                server=config['mt5']['server']
+            ):
+                raise Exception("MT5 initialization failed")
+            self.mt5_connected = True
+            logger.info("MT5 initialized successfully")
+        except Exception as e:
+            logger.error(f"MT5 initialization error: {e}")
+            
+    def load_model(self):
+        try:
+            self.model = load_model('model.h5')
+            logger.info("Model loaded successfully")
+        except Exception as e:
+            logger.error(f"Model loading error: {e}")
+            
+    async def get_market_data(self, symbol):
+        try:
+            rates = mt5.copy_rates_from_pos(
+                symbol, 
+                mt5.TIMEFRAME_M15, 
+                0, 
+                config['bars']
+            )
+            df = pd.DataFrame(rates)
+            df['datetime'] = pd.to_datetime(df['time'], unit='s')
+            return df
+        except Exception as e:
+            logger.error(f"Error fetching market data: {e}")
+            return None
+
+    def calculate_position_size(self, symbol, risk_percent):
+        try:
+            account_info = mt5.account_info()
+            balance = account_info.balance
+            
+            if config['risk']['position_sizing_method'] == 'fixed':
+                return config['risk']['default_lot_size']
+            
+            # ATR-based position sizing
+            atr = self.calculate_atr(symbol)
+            risk_amount = balance * risk_percent
+            pip_value = self.get_pip_value(symbol)
+            position_size = risk_amount / (atr * pip_value)
+            
+            return round(position_size, 2)
+        except Exception as e:
+            logger.error(f"Position size calculation error: {e}")
+            return config['risk']['default_lot_size']
+
+    def calculate_atr(self, symbol):
+        try:
+            df = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M15, 0, config['risk']['atr_period'])
+            df = pd.DataFrame(df)
+            df['tr'] = np.maximum(
+                df['high'] - df['low'],
+                np.maximum(
+                    abs(df['high'] - df['close'].shift(1)),
+                    abs(df['low'] - df['close'].shift(1))
+                )
+            )
+            return df['tr'].mean()
+        except Exception as e:
+            logger.error(f"ATR calculation error: {e}")
+            return None
+
+    def get_pip_value(self, symbol):
+        try:
+            symbol_info = mt5.symbol_info(symbol)
+            return symbol_info.trade_tick_value
+        except Exception as e:
+            logger.error(f"Pip value calculation error: {e}")
+            return 0.0001
+
+    @celery.task
+    def process_signals():
+        for symbol in config['symbols']:
+            try:
+                # Get market data
+                df = self.get_market_data(symbol)
+                if df is None:
+                    continue
+                
+                # Prepare data for model
+                X = self.prepare_data(df)
+                
+                # Get prediction
+                prediction = self.model.predict(X)
+                
+                # Execute trade if signal is strong enough
+                if abs(prediction[0]) > config['monitor']['alert_threshold']:
+                    self.execute_trade(symbol, prediction[0])
+                    
+                # Store results
+                self.store_trade_data(symbol, prediction[0])
+                
+            except Exception as e:
+                logger.error(f"Signal processing error for {symbol}: {e}")
+
+    def execute_trade(self, symbol, signal):
+        try:
+            if not self.check_risk_limits():
+                logger.warning("Risk limits reached, skipping trade")
+                return
+                
+            position_size = self.calculate_position_size(
+                symbol, 
+                config['risk']['max_risk_per_trade']
+            )
+            
+            if signal > 0:
+                order_type = mt5.ORDER_TYPE_BUY
+            else:
+                order_type = mt5.ORDER_TYPE_SELL
+                
+            price = mt5.symbol_info_tick(symbol).ask if order_type == mt5.ORDER_TYPE_BUY else mt5.symbol_info_tick(symbol).bid
+            
+            sl = price - (config['risk']['stop_loss_pips'] * self.get_pip_value(symbol)) if order_type == mt5.ORDER_TYPE_BUY else price + (config['risk']['stop_loss_pips'] * self.get_pip_value(symbol))
+            tp = price + (config['risk']['take_profit_pips'] * self.get_pip_value(symbol)) if order_type == mt5.ORDER_TYPE_BUY else price - (config['risk']['take_profit_pips'] * self.get_pip_value(symbol))
+            
+            request = {
+                "action": mt5.TRADE_ACTION_DEAL,
+                "symbol": symbol,
+                "volume": position_size,
+                "type": order_type,
+                "price": price,
+                "sl": sl,
+                "tp": tp,
+                "magic": 234000,
+                "comment": "python script open",
+                "type_time": mt5.ORDER_TIME_GTC,
+                "type_filling": mt5.ORDER_FILLING_IOC,
             }
-        }
-        return false
-    }
+            
+            result = mt5.order_send(request)
+            if result.retcode != mt5.TRADE_RETCODE_DONE:
+                logger.error(f"Order failed: {result.comment}")
+            else:
+                logger.info(f"Order executed: {symbol}, Signal: {signal}")
+                
+        except Exception as e:
+            logger.error(f"Trade execution error: {e}")
 
-    func validateEnvironment() -> Bool {
-        !isJailbroken()
-    }
-} 
+    def check_risk_limits(self):
+        try:
+            # Check number of open positions
+            positions = mt5.positions_total()
+            if positions >= config['risk']['max_open_positions']:
+                return False
+                
+            # Check daily risk
+            daily_loss = self.calculate_daily_loss()
+            if daily_loss >= config['risk']['max_daily_risk']:
+                return False
+                
+            return True
+        except Exception as e:
+            logger.error(f"Risk check error: {e}")
+            return False
+
+    def calculate_daily_loss(self):
+        try:
+            today = datetime.now().date()
+            history_deals = mt5.history_deals_get(
+                datetime(today.year, today.month, today.day),
+                datetime.now()
+            )
+            
+            if history_deals is None:
+                return 0
+                
+            total_loss = sum([deal.profit for deal in history_deals if deal.profit < 0])
+            account_balance = mt5.account_info().balance
+            
+            return abs(total_loss) / account_balance
+        except Exception as e:
+            logger.error(f"Daily loss calculation error: {e}")
+            return 0
+
+    def store_trade_data(self, symbol, signal):
+        try:
+            cursor = self.db_conn.cursor()
+            cursor.execute('''
+                INSERT INTO trades (symbol, signal, timestamp)
+                VALUES (?, ?, ?)
+            ''', (symbol, signal, datetime.now()))
+            self.db_conn.commit()
+        except Exception as e:
+            logger.error(f"Database storage error: {e}")
+
+    def __del__(self):
+        if self.mt5_connected:
+            mt5.shutdown()
+        self.db_conn.close()
+
+@app.route('/api/start', methods=['POST'])
+@jwt_required()
+def start_bot():
+    try:
+        bot = TradingBot()
+        return jsonify({"status": "success", "message": "Bot started successfully"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
