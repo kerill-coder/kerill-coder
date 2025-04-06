@@ -1,15 +1,14 @@
-- 👋 Hi, I’m @kerill-coder
-- 👀 I’m interested in ...
-- 🌱 I’m currently learning ...
-- 💞️ I’m looking to collaborate on ...
-- 📫 How to reach me ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
+my_project/
+│
+├── app.py             # Основной файл для запуска приложения (например, Flask)
+├── requirements.txt   # Список зависимостей, если есть
+├── config.yaml        # Конфигурационные файлы, если они есть
+├── src/               # Исходный код
+│   ├── __init__.py
+│   ├── trading_bot.py
+│   └── ...
+└── README.md          # Документация, если она есть
 
-<!---
-kerill-coder/kerill-coder is a ✨ special ✨ repository because its `README.md` (this file) appears on your GitHub profile.
-You can click the Preview link to take a look at your changes.
---->
 AppDelegate.swift
 
 import UIKit
