@@ -280,3 +280,5 @@ if __name__ == '__main__':
 pip install -r requirements.txt
 pytest
 python -m unittest discover
+pip install -r requirements.txt
+python app.py
