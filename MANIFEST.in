@@ -1,0 +1,2 @@
+include trading_bot/config.yaml
+include trading_bot/model.h5
